@@ -1,0 +1,151 @@
+# Fin-ray Soft Gripper for Object Manipulation with Multi-Robot Systems
+
+This repository contains the open hardware and software files for the Fin-Ray soft gripper presented in:
+
+> **S. Velasquez, A. Toro-Ossaba, J. C. Tejada, D. Sanin-Villa, and J. D. Núñez**,  
+> *Fin-ray Soft Gripper for Object Manipulation with Multi-robot Systems*, MDPI Hardware, 2025.
+
+The gripper is a 3D-printed Fin-Ray-effect end-effector with embedded piezoresistive sensing and an STM32-based controller that provides real-time force feedback for cooperative manipulation tasks in multi-robot systems.
+
+---
+
+## 1. Repository Contents
+
+This repository provides all files required to reproduce the hardware and software described in the article:
+
+| Item               | Type                  | Description                                                                 |
+|--------------------|-----------------------|-----------------------------------------------------------------------------|
+| `CAD/print_files/Geared_Arm_driver.stl`  | 3D file (.stl/.stp)  | Right geared arm (PLA), directly coupled to the servo output               |
+| `CAD/print_files/Geared_Arm_driven.stl`  | 3D file (.stl/.stp)  | Left geared arm (PLA), driven via 1:1 gear transmission                    |
+| `CAD/print_files/Bracket.stl`            | 3D file (.stl/.stp)  | Mounting bracket for the gripper (PLA)                                     |
+| `CAD/print_files/Gripper_Finger.stl`     | 3D file (.stl/.stp)  | Fin-Ray soft finger (TPU)                                                  |
+| `firmware/STM32_firmware`                | STM32CubeIDE project | Firmware for the STM32-based controller                                    |
+| `software/plotter.py`                    | Python script        | GUI for visualization and command/control (Figure 12 in the paper)         |
+| `media/Assembly.wmv`                     | Video                | Instruction video for mechanical assembly                                  |
+| `README.md`                              | Markdown             | This file: instructions, dependencies, and usage                           |
+
+Naming and folder structure may vary slightly depending on your local setup, but all items listed in Table 10 of the paper are included in this repository.
+
+---
+
+## 2. Hardware Overview
+
+The system consists of:
+
+- **Two Fin-Ray-effect fingers** (TPU 95A, 3D printed)
+- **HK15138 servomotor** (\~4.3 kg·cm at 6 V) to actuate both fingers via a 1:1 gear pair
+- **Piezoresistive thin-film force sensor** (H52 Pressure Sensor, JESSINIE)
+- **TB6612FNG motor driver breakout board**
+- **STM32F407G-DISC1** development board for sensing, control, and communication
+- Optional integration with the **Yahboom ROSMASTER X3** mobile robot platform
+
+The gripper is designed for caging-based cooperative manipulation and is intended to handle approximately cubic objects in the range **20×20×20 cm to 30×30×30 cm**.
+
+---
+
+## 3. Design Files and 3D Printing
+
+### 3.1 Fin-Ray Fingers
+
+- **Files**:  
+  - `CAD/print_files/Gripper_Finger.stl` (and optionally `.stp`)
+- **Material**: TPU 95A  
+- **Printer**: Ender 3 V2 (or similar FDM printer) 
+- **Infill**: 100%  
+- **Nozzle**: 0.4 mm  
+- **Recommended configuration**:
+  - Layer height: **0.20 mm**
+  - Printing temperature: **220 °C**
+  - Bed temperature: **30 °C**
+  - Print speed: **20 mm/s**
+  - Cooling: **disabled**
+  - Retraction: **disabled**
+  - Combing mode: **All**
+
+> **Note:** A **direct-drive** extruder modification is strongly recommended for TPU to reduce jamming and improve retraction accuracy.
+
+### 3.2 Rigid Parts (Bracket and Gears)
+
+- **Files**:
+  - `CAD/print_files/Bracket.stl`
+  - `CAD/print_files/Geared_Arm_driver.stl`
+  - `CAD/print_files/Geared_Arm_driven.stl`
+
+- **Material**: PLA
+- **Nominal gear parameters**:
+  - 20 teeth
+  - Module: 2.25 mm
+  - Pressure angle: 20°
+  - 1:1 transmission between driver and driven arm
+
+Print these parts with standard PLA settings (e.g., 0.20 mm layer height, 30–40% infill) and verify dimensional accuracy of the gear mesh before assembly.
+
+---
+
+## 4. Bill of Materials (Summary)
+
+A detailed bill of materials is provided in the paper (Table 6). The essential components are:
+
+- HK15138 servomotor
+- STM32F407G-DISC1 development board
+- TB6612FNG dual H-bridge motor driver
+- H52 piezoresistive force sensor (JESSINIE)
+- Double-sided adhesive tape (e.g., Tesa 4965)
+- 5 kΩ THT resistor (for voltage divider)
+- MR105ZZ bearing
+- Assorted M3 and M5 screws and hex nuts
+- Optional: Yahboom ROSMASTER X3 platform and an external 6 V power supply for the servo
+
+---
+
+## 5. Firmware: STM32 Controller
+
+### 5.1 Toolchain and Versions
+
+The firmware has been developed and tested with:
+
+- **STM32CubeIDE**: ≥ 1.15 (any recent 1.x version should be compatible)
+- **Target MCU**: STM32F407 on the STM32F407G-DISC1 evaluation board
+- **Language**: C (HAL-based, generated by STM32CubeMX inside CubeIDE)
+
+### 5.2 Features
+
+The embedded firmware implements:
+
+- A **finite-state machine** with states: `START`, `CONTROL`, `IDLE`, `END`
+- **ADC acquisition** of the force sensor via a voltage divider
+- FIR-based low-pass filtering (moving-average, ~20 Hz cutoff)
+- A **proportional controller** that adjusts servo pulse width based on force error
+- Safety limits on PWM to respect servo mechanical range
+- **USB serial** (virtual COM port) for:
+  - Mode selection (`'s'`, `'i'`, `'c'`)
+  - Telemetry streaming: force, setpoint, error, and pulse width
+
+### 5.3 Building and Flashing
+
+1. Open **STM32CubeIDE**.
+2. Import the project from `firmware/STM32_FinRay_Gripper`.
+3. Configure the correct **debug probe** (usually ST-Link) if needed.
+4. Build the project (`Project → Build`).
+5. Flash to the board (`Run → Debug` or `Run → Run`).
+
+After flashing, the board will start in its initial state and will be ready to communicate via USB.
+
+---
+
+## 6. Python GUI (Plotter)
+
+### 6.1 Environment and Dependencies
+
+The graphical tool `software/plotter.py` was developed and tested with:
+
+- **Python**: 3.10 or later (3.9+ recommended)
+- **Dependencies**:
+  - `pyqtgraph V0.13.7` 
+  - `PyQt5 V2.15.11`
+  - `pyserial V3.5`
+
+Install them via:
+
+```bash
+pip install pyqtgraph pyqt5 pyserial
