@@ -80,6 +80,11 @@ The gripper is designed for caging-based cooperative manipulation and is intende
 
 Print these parts with standard PLA settings (e.g., 0.20 mm layer height, 30–40% infill) and verify dimensional accuracy of the gear mesh before assembly.
 
+### 3.3 Asembly
+
+Click the thumbnail below to watch the assembly video:
+
+[![Assembly Video](media/assembly_thumbnail.png)](media/Assembly.mp4)
 ---
 
 ## 4. Bill of Materials (Summary)
